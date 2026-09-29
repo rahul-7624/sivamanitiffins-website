@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SHIVAMANI TIFFINS – Admin Panel QR</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Poppins', sans-serif;
+        }
+
+        body {
+            background: #0a0a0a;
+            color: #fff;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 30px 20px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background: url('background.jpeg') center center / cover no-repeat;
+            filter: blur(2px) brightness(0.35);
+            transform: scale(1.05);
+            z-index: 0;
+        }
+
+        .card {
+            position: relative;
+            z-index: 1;
+            background: rgba(22, 22, 22, 0.75);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1.5px solid rgba(255, 107, 0, 0.25);
+            border-radius: 28px;
+            padding: 30px 24px;
+            text-align: center;
+            max-width: 380px;
+            width: 100%;
+            box-shadow: 0 30px 80px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 0 50px rgba(255, 107, 0, 0.05);
+        }
+
+        .restaurant-logo-img {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            border: 2px solid #ff6b00;
+            background: #fff;
+            object-fit: cover;
+            margin-bottom: 10px;
+        }
+
+        .restaurant-name {
+            font-size: 22px;
+            font-weight: 900;
+            color: #ff6b00;
+            margin-bottom: 4px;
+        }
+
+        .scan-label {
+            display: inline-block;
+            background: rgba(255, 107, 0, 0.1);
+            border: 1px solid rgba(255, 107, 0, 0.3);
+            color: #ff8c00;
+            font-size: 12px;
+            font-weight: 600;
+            padding: 5px 14px;
+            border-radius: 50px;
+            margin-bottom: 16px;
+            letter-spacing: 1px;
+        }
+
+        .qr-wrap {
+            background: #ffffff;
+            border-radius: 18px;
+            padding: 14px;
+            display: inline-block;
+            margin-bottom: 16px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+            border: 4px solid rgba(255, 107, 0, 0.1);
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.3s;
+        }
+
+        .qr-wrap:hover {
+            transform: scale(1.03);
+            box-shadow: 0 15px 35px rgba(255, 107, 0, 0.25);
+        }
+
+        .qr-wrap img {
+            width: 190px;
+            height: 190px;
+            display: block;
+        }
+
+        .url-text {
+            font-size: 11px;
+            color: #555;
+            margin-bottom: 16px;
+            word-break: break-all;
+        }
+
+        .divider {
+            border: none;
+            border-top: 1px solid rgba(255, 255, 255, 0.06);
+            margin: 16px 0;
+        }
+
+        .info-row {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            color: #888;
+            font-size: 12.5px;
+            margin-bottom: 8px;
+        }
+
+        .info-row strong {
+            color: #ccc;
+        }
+
+        .open-btn {
+            display: block;
+            margin: 18px auto 0;
+            background: linear-gradient(135deg, #ff6b00, #ff8c00);
+            color: #fff;
+            text-decoration: none;
+            padding: 10px 28px;
+            border-radius: 50px;
+            font-size: 14px;
+            font-weight: 700;
+            box-shadow: 0 6px 24px rgba(255, 107, 0, 0.4);
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .open-btn:hover {
+            transform: translateY(-3px) scale(1.04);
+            box-shadow: 0 10px 30px rgba(255, 107, 0, 0.6);
+        }
+
+        @media print {
+            body { background: #fff; }
+            .card { border-color: #ccc; background: #fff; box-shadow: none; color: #000; }
+            .restaurant-name { color: #ff6b00; }
+            .open-btn, .url-text { display: none; }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="card">
+        <img class="restaurant-logo-img" src="logo.jpg" alt="Sivamani Tiffins Logo">
+        <div class="restaurant-name">SHIVAMANI TIFFINS</div>
+        <div class="scan-label">⚙️ Admin Panel</div>
+        <div class="qr-wrap" id="qrContainer"></div>
+        <p class="url-text" id="linkUrl"></p>
+        <hr class="divider">
+        <div class="info-row" style="line-height: 1.4;">📍 <strong>BK Guda, S.R Nagar, Hyderabad, TELANGANA - 500038</strong></div>
+        <div class="info-row">📞 <strong>+91 94908 90016</strong></div>
+        <div class="info-row" style="flex-direction: column; gap: 4px; line-height: 1.4;">
+            <div>🕒 <strong id="displayMorningTime">Morning: 6:00 AM – 12:00 PM</strong></div>
+            <div style="font-size: 13px; opacity: 0.85;"><strong id="displayEveningTime">Evening: 6:00 PM – 11:00 PM</strong></div>
+        </div>
+        <a href="admin.html" class="open-btn" id="openBtn">Open Admin Panel →</a>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script>
+        function updateServerInfo() {
+            // Fetch Settings
+            fetch('/api/settings')
+                .then(res => res.json())
+                .then(data => {
+                    if(data.morningTiming) document.getElementById('displayMorningTime').textContent = data.morningTiming;
+                    if(data.eveningTiming) document.getElementById('displayEveningTime').textContent = data.eveningTiming;
+                }).catch(e => console.error(e));
+
+            fetch('/api/server-info')
+                .then(res => res.json())
+                .then(info => {
+                    const isTunnel = !!info.publicUrl;
+                    let dynamicUrl;
+
+                    if (isTunnel) {
+                        dynamicUrl = `${info.publicUrl}/admin.html`;
+                    } else {
+                        const host = info.localIp === 'localhost' ? window.location.hostname : info.localIp;
+                        const port = info.port || window.location.port || '8080';
+                        dynamicUrl = `http://${host}:${port}/admin.html`;
+                    }
+
+                    document.getElementById('linkUrl').textContent = dynamicUrl;
+
+                    const qrContainer = document.getElementById('qrContainer');
+                    qrContainer.innerHTML = '';
+                    new QRCode(qrContainer, { text: dynamicUrl, width: 230, height: 230 });
+
+                    if (isTunnel) {
+                        let badge = document.getElementById('tunnelActiveBadge');
+                        if (!badge) {
+                            badge = document.createElement('div');
+                            badge.id = 'tunnelActiveBadge';
+                            badge.style.background = 'rgba(34, 197, 94, 0.15)';
+                            badge.style.border = '1px solid rgba(34, 197, 94, 0.4)';
+                            badge.style.color = '#22c55e';
+                            badge.style.fontSize = '11px';
+                            badge.style.fontWeight = '600';
+                            badge.style.padding = '5px 12px';
+                            badge.style.borderRadius = '50px';
+                            badge.style.marginTop = '10px';
+                            badge.style.display = 'inline-flex';
+                            badge.style.alignItems = 'center';
+                            badge.style.gap = '8px';
+                            badge.style.animation = 'pulse 2s infinite';
+                            badge.innerHTML = `<span style="width: 8px; height: 8px; background: #22c55e; border-radius: 50%; display: inline-block;"></span> Public Link Active`;
+
+                            const qrWrap = document.querySelector('.qr-wrap');
+                            if (qrWrap) qrWrap.parentNode.insertBefore(badge, qrWrap.nextSibling);
+                        }
+                        if (!document.getElementById('pulse-style')) {
+                            const style = document.createElement('style');
+                            style.id = 'pulse-style';
+                            style.innerHTML = `@keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4); } 70% { box-shadow: 0 0 0 10px rgba(34, 197, 94, 0); } 100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); } }`;
+                            document.head.appendChild(style);
+                        }
+                    } else {
+                        setTimeout(updateServerInfo, 2000);
+                    }
+                })
+                .catch(err => {
+                    setTimeout(updateServerInfo, 3000);
+                });
+        }
+        updateServerInfo();
+        document.getElementById('openBtn').href = 'admin.html';
+    </script>
+</body>
+</html>

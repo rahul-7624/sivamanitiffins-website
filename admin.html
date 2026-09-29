@@ -1,0 +1,919 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin – SHIVAMANI TIFFINS</title>
+    <link rel="stylesheet" href="app.css?v=1.1">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <style>
+        /* Admin Order Modal */
+        .admin-modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(5px);
+            z-index: 1000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .admin-modal {
+            background: #111;
+            border: 1px solid rgba(255, 107, 0, 0.3);
+            border-radius: 20px;
+            width: 90%;
+            max-width: 400px;
+            padding: 24px;
+            position: relative;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .admin-modal-close {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            background: none;
+            border: none;
+            color: #fff;
+            font-size: 24px;
+            cursor: pointer;
+        }
+
+        /* Re-use token slip styling for admin modal */
+        .admin-slip-container {
+            background: #fff;
+            border-radius: 12px;
+            padding: 20px;
+            color: #000;
+            font-family: 'Courier New', Courier, monospace;
+            margin-top: 10px;
+        }
+
+        .admin-slip-header {
+            text-align: center;
+            border-bottom: 2px dashed #ccc;
+            padding-bottom: 12px;
+            margin-bottom: 12px;
+        }
+
+        .admin-slip-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 4px;
+        }
+
+        .admin-slip-token {
+            font-size: 32px;
+            font-weight: 900;
+            margin: 10px 0;
+        }
+
+        .admin-slip-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 14px;
+            margin-bottom: 4px;
+            font-weight: 600;
+        }
+
+        .admin-slip-row-bold {
+            font-weight: bold;
+            font-size: 16px;
+            margin-top: 10px;
+            border-top: 1px dashed #ccc;
+            padding-top: 10px;
+        }
+    </style>
+</head>
+
+<body class="admin-body">
+
+    <!-- LOGIN SCREEN -->
+    <div id="loginScreen" class="login-screen">
+        <div class="login-box">
+            <div class="login-icon">🔐</div>
+            <h2>Admin Login</h2>
+            <p>SHIVAMANI TIFFINS</p>
+            <input type="password" id="adminPass" placeholder="Enter admin password"
+                onkeydown="if(event.key==='Enter') adminLogin()">
+            <button onclick="adminLogin()"><i class="fa fa-sign-in-alt"></i> Login</button>
+
+        </div>
+    </div>
+
+    <!-- ADMIN PANEL -->
+    <div id="adminPanel" class="admin-panel" style="display:none">
+
+        <header class="admin-header">
+            <div class="admin-header-inner">
+                <div>
+                    <h1>🍽️ Admin Panel</h1>
+                    <span>SHIVAMANI TIFFINS</span>
+                </div>
+                <div class="admin-header-actions">
+                    <button class="admin-btn" onclick="showMenuQr()"><i class="fa fa-qrcode"></i> Menu QR</button>
+                    <button class="admin-btn" onclick="resetTokens()"><i class="fa fa-refresh"></i> Reset
+                        Tokens</button>
+                    <button class="admin-btn danger" onclick="adminLogout()"><i class="fa fa-sign-out-alt"></i>
+                        Logout</button>
+                </div>
+            </div>
+        </header>
+
+        <div class="admin-tabs">
+            <button class="admin-tab active" id="tab-availability" onclick="switchTab('availability')">
+                <i class="fa fa-toggle-on"></i> Availability
+            </button>
+            <button class="admin-tab" id="tab-orders" onclick="switchTab('orders')">
+                <i class="fa fa-list"></i> Today's Orders
+            </button>
+            <button class="admin-tab" id="tab-history" onclick="switchTab('history')">
+                <i class="fa fa-history"></i> Order History
+            </button>
+            <button class="admin-tab" id="tab-settings" onclick="switchTab('settings')">
+                <i class="fa fa-cog"></i> Settings
+            </button>
+        </div>
+
+        <!-- AVAILABILITY TAB -->
+        <div id="tab-content-availability" class="admin-content">
+            <div class="admin-toolbar">
+                <h3>Menu Availability</h3>
+                <div class="admin-quick-btns">
+                    <button onclick="setAll(true)" class="green-btn"><i class="fa fa-check"></i> All ON</button>
+                    <button onclick="setAll(false)" class="red-btn"><i class="fa fa-times"></i> All OFF</button>
+                </div>
+            </div>
+            <div id="adminMenuGrid" class="admin-menu-grid"></div>
+        </div>
+
+        <!-- ORDERS TAB -->
+        <div id="tab-content-orders" class="admin-content" style="display:none">
+            <div class="admin-toolbar">
+                <h3>Today's Orders</h3>
+                <button onclick="loadOrders()" class="green-btn"><i class="fa fa-sync"></i> Refresh</button>
+            </div>
+            <div class="order-type-filters" style="display: flex; gap: 10px; margin: 15px 0; flex-wrap: wrap;">
+                <button class="admin-tab active" id="order-filter-all" onclick="setOrderTypeFilter('all')">All Orders (<span id="count-all">0</span>)</button>
+                <button class="admin-tab" id="order-filter-dine_in" onclick="setOrderTypeFilter('dine_in')">🍽️ Dine-In (<span id="count-dine_in">0</span>)</button>
+                <button class="admin-tab" id="order-filter-parcel" onclick="setOrderTypeFilter('parcel')">🛍️ Parcel (<span id="count-parcel">0</span>)</button>
+            </div>
+            <div id="adminOrdersList"></div>
+        </div>
+
+        <!-- HISTORY TAB -->
+        <div id="tab-content-history" class="admin-content" style="display:none">
+            <div class="admin-toolbar">
+                <h3>Past Order History</h3>
+                <button onclick="loadHistory()" class="green-btn"><i class="fa fa-sync"></i> Refresh</button>
+            </div>
+            <div class="order-type-filters" style="display: flex; gap: 10px; margin: 15px 0; flex-wrap: wrap;">
+                <button class="admin-tab active" id="history-filter-all" onclick="setHistoryTypeFilter('all')">All History (<span id="hcount-all">0</span>)</button>
+                <button class="admin-tab" id="history-filter-dine_in" onclick="setHistoryTypeFilter('dine_in')">🍽️ Dine-In (<span id="hcount-dine_in">0</span>)</button>
+                <button class="admin-tab" id="history-filter-parcel" onclick="setHistoryTypeFilter('parcel')">🛍️ Parcel (<span id="hcount-parcel">0</span>)</button>
+            </div>
+            <div id="adminHistoryList"></div>
+        </div>
+
+        <!-- SETTINGS TAB -->
+        <div id="tab-content-settings" class="admin-content" style="display:none">
+            <div class="admin-toolbar">
+                <h3>⚙️ Admin Settings</h3>
+            </div>
+            <div class="settings-box">
+                <div class="setting-group">
+                    <label>Admin Login ID (Username)</label>
+                    <input type="text" id="settingAdminId" class="setting-input" placeholder="e.g. sivamani_admin">
+                </div>
+                <div class="setting-group" style="margin-top:20px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 20px;">
+                    <label>Morning Timings (Displayed on Menu)</label>
+                    <input type="text" id="settingMorningTime" class="setting-input" placeholder="e.g. Morning: 6:00 AM – 12:00 PM">
+                </div>
+                <div class="setting-group">
+                    <label>Evening Timings (Displayed on Menu)</label>
+                    <input type="text" id="settingEveningTime" class="setting-input" placeholder="e.g. Evening: 6:00 PM – 11:00 PM">
+                </div>
+                <div class="setting-group" style="margin-top:20px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 20px;">
+                    <label>Current Password</label>
+                    <input type="password" id="settingCurrentPass" class="setting-input"
+                        placeholder="Enter current password">
+                </div>
+                <div class="setting-group">
+                    <label>New Password</label>
+                    <input type="password" id="settingNewPass" class="setting-input" placeholder="Enter new password">
+                </div>
+                <div class="setting-group">
+                    <label>Confirm New Password</label>
+                    <input type="password" id="settingConfirmPass" class="setting-input"
+                        placeholder="Re-enter new password">
+                </div>
+                <button class="green-btn" onclick="saveAdminSettings()"
+                    style="width:100%;padding:14px;font-size:15px;margin-top:8px;">
+                    <i class="fa fa-save"></i> Save Settings
+                </button>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ORDER DETAILS MODAL -->
+    <div class="admin-modal-overlay" id="adminOrderModal">
+        <div class="admin-modal">
+            <button class="admin-modal-close" onclick="closeOrderModal()"><i class="fa fa-times"></i></button>
+            <h3 style="color:#fff; margin-bottom: 10px; font-family:'Poppins',sans-serif;"><i class="fa fa-receipt"></i>
+                Full Order Details</h3>
+            <div class="admin-slip-container" id="adminSlipContent">
+                <!-- Populated via JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- MENU QR MODAL -->
+    <div class="admin-modal-overlay" id="menuQrModal">
+        <div class="admin-modal" style="text-align:center;">
+            <button class="admin-modal-close" onclick="closeMenuQr()"><i class="fa fa-times"></i></button>
+            <h3 style="color:#fff; margin-bottom: 20px; font-family:'Poppins',sans-serif;">Scan to Order Menu</h3>
+            <div style="background:#fff; padding: 20px; border-radius: 12px; display:inline-block;" id="adminMenuQrContainer">
+            </div>
+            <p style="color:#aaa; margin-top:15px; font-size:14px;">Customers can scan this QR code to open the menu on
+                their phones.</p>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="app.js?v=1.1"></script>
+    <script>
+        // ---- ADMIN SPECIFIC ----
+        const ADMIN_PASSWORD = 'siva1234';
+
+        // Synthesize a beautiful C-Major arpeggio chime sound for new order alerts
+        function playChime() {
+            try {
+                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+                // Note 1: C5
+                const osc1 = audioCtx.createOscillator();
+                const gain1 = audioCtx.createGain();
+                osc1.type = 'sine';
+                osc1.frequency.setValueAtTime(523.25, audioCtx.currentTime);
+                gain1.gain.setValueAtTime(0.12, audioCtx.currentTime);
+                gain1.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.4);
+                osc1.connect(gain1);
+                gain1.connect(audioCtx.destination);
+                osc1.start();
+                osc1.stop(audioCtx.currentTime + 0.4);
+
+                // Note 2: E5 (offset by 120ms)
+                setTimeout(() => {
+                    const osc2 = audioCtx.createOscillator();
+                    const gain2 = audioCtx.createGain();
+                    osc2.type = 'sine';
+                    osc2.frequency.setValueAtTime(659.25, audioCtx.currentTime);
+                    gain2.gain.setValueAtTime(0.12, audioCtx.currentTime);
+                    gain2.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.5);
+                    osc2.connect(gain2);
+                    gain2.connect(audioCtx.destination);
+                    osc2.start();
+                    osc2.stop(audioCtx.currentTime + 0.5);
+                }, 120);
+
+                // Note 3: G5 (offset by 240ms)
+                setTimeout(() => {
+                    const osc3 = audioCtx.createOscillator();
+                    const gain3 = audioCtx.createGain();
+                    osc3.type = 'sine';
+                    osc3.frequency.setValueAtTime(783.99, audioCtx.currentTime);
+                    gain3.gain.setValueAtTime(0.15, audioCtx.currentTime);
+                    gain3.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.7);
+                    osc3.connect(gain3);
+                    gain3.connect(audioCtx.destination);
+                    osc3.start();
+                    osc3.stop(audioCtx.currentTime + 0.7);
+                }, 240);
+            } catch (e) {
+                console.warn('AudioContext not allowed or supported by browser:', e);
+            }
+        }
+
+        let adminSseConnected = false;
+        function initAdminSSE() {
+            if (adminSseConnected) return;
+
+            try {
+                const source = new EventSource('/api/orders/live');
+                adminSseConnected = true;
+
+                source.onmessage = function (event) {
+                    try {
+                        const data = JSON.parse(event.data);
+
+                        if (data.type === 'new_order') {
+                            playChime();
+                            const tokenStr = `#${String(data.order.token).padStart(3, '0')}`;
+                            const totalStr = `₹${data.order.total}`;
+                            showAdminToast(`🔔 NEW ORDER ${tokenStr} — ${totalStr}`);
+                            loadOrders();
+
+                            // Flash the Orders tab
+                            const ordersTab = document.querySelector('[onclick="showTab(\'orders\')"]');
+                            if (ordersTab) {
+                                ordersTab.style.background = '#ff6b00';
+                                ordersTab.style.color = '#fff';
+                                setTimeout(() => { ordersTab.style.background = ''; ordersTab.style.color = ''; }, 2000);
+                            }
+
+                            // Browser notification if permission granted
+                            if (Notification.permission === 'granted') {
+                                new Notification('🍽️ SHIVAMANI TIFFINS — New Order!', {
+                                    body: `Token ${tokenStr} | ${data.order.items.map(i => `${i.name} x${i.qty}`).join(', ')} | Total: ${totalStr}`,
+                                    icon: '/logo.png'
+                                });
+                            } else if (Notification.permission !== 'denied') {
+                                Notification.requestPermission().then(perm => {
+                                    if (perm === 'granted') {
+                                        new Notification('🍽️ SHIVAMANI TIFFINS — New Order!', {
+                                            body: `Token ${tokenStr} | Total: ${totalStr}`,
+                                            icon: '/logo.png'
+                                        });
+                                    }
+                                });
+                            }
+                        } else if (data.type === 'reset') {
+                            showAdminToast('🔄 Orders list reset by server');
+                            loadOrders();
+                        } else if (data.type === 'payment_confirmed') {
+                            loadOrders();
+                        } else if (data.type === 'order_cancelled') {
+                            loadOrders();
+                        } else if (data.type === 'availability') {
+                            availability = { ...availability, ...data.availability };
+                            renderAdminMenu();
+                        }
+                    } catch (e) {
+                        console.error("SSE parse error:", e);
+                    }
+                };
+
+                source.onerror = function () {
+                    console.warn("SSE connection lost.");
+                };
+            } catch (e) {
+                console.error("Could not setup admin SSE:", e);
+            }
+        }
+
+        function adminLogin() {
+            const pass = document.getElementById('adminPass').value;
+            const correctPass = localStorage.getItem('admin_password') || ADMIN_PASSWORD;
+            if (pass === correctPass) {
+                document.getElementById('loginScreen').style.display = 'none';
+                document.getElementById('adminPanel').style.display = 'block';
+                renderAdminMenu();
+                initAdminSSE();
+                loadOrders();
+            } else {
+                document.getElementById('adminPass').style.borderColor = '#ff4444';
+                document.getElementById('adminPass').placeholder = 'Wrong password!';
+                setTimeout(() => {
+                    document.getElementById('adminPass').style.borderColor = '';
+                    document.getElementById('adminPass').placeholder = 'Enter admin password';
+                }, 1500);
+            }
+        }
+
+        function adminLogout() {
+            document.getElementById('loginScreen').style.display = 'flex';
+            document.getElementById('adminPanel').style.display = 'none';
+            document.getElementById('adminPass').value = '';
+        }
+
+        function switchTab(tabName) {
+            document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.admin-content').forEach(c => c.style.display = 'none');
+
+            document.getElementById(`tab-${tabName}`).classList.add('active');
+            document.getElementById(`tab-content-${tabName}`).style.display = 'block';
+
+            if (tabName === 'orders') loadOrders();
+            if (tabName === 'history') loadHistory();
+            if (tabName === 'settings') loadSettingsForm();
+        }
+
+        function renderAdminMenu() {
+            const grid = document.getElementById('adminMenuGrid');
+            if (!grid) return;
+            const categories = [...new Set(MENU_ITEMS.map(i => i.category))];
+
+            grid.innerHTML = categories.map(cat => `
+        <div class="admin-cat-section animate-fade-in">
+            <div class="admin-cat-header">
+                <h4>${cat}</h4>
+                <div>
+                    <button onclick="setCategoryAll('${cat}', true)" class="mini-btn green">ON</button>
+                    <button onclick="setCategoryAll('${cat}', false)" class="mini-btn red">OFF</button>
+                </div>
+            </div>
+            ${MENU_ITEMS.filter(i => i.category === cat).map(item => `
+                <div class="admin-item-row" id="admin-row-${item.id}" style="opacity: ${availability[item.id] !== false ? '1' : '0.5'}">
+                    <div class="admin-item-name">
+                        <span>${item.name}</span>
+                        <span class="admin-price">₹${item.price}</span>
+                    </div>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="toggle-${item.id}" 
+                            ${availability[item.id] !== false ? 'checked' : ''}
+                            onchange="toggleItem(${item.id}, this.checked)">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+            `).join('')}
+        </div>
+    `).join('');
+        }
+
+        function toggleItem(id, val) {
+            availability[id] = val;
+            // Post update to the backend server
+            const updateObj = {};
+            updateObj[id] = val;
+            saveAvailability(updateObj);
+
+            const row = document.getElementById(`admin-row-${id}`);
+            if (row) {
+                row.style.opacity = val ? '1' : '0.5';
+            }
+            showAdminToast(val ? '✅ Item enabled' : '🔴 Item disabled');
+        }
+
+        function setAll(val) {
+            const updateObj = {};
+            MENU_ITEMS.forEach(item => {
+                availability[item.id] = val;
+                updateObj[item.id] = val;
+            });
+            saveAvailability(updateObj);
+            renderAdminMenu();
+            showAdminToast(val ? '✅ All items enabled' : '🔴 All items disabled');
+        }
+
+        function setCategoryAll(cat, val) {
+            const updateObj = {};
+            MENU_ITEMS.filter(i => i.category === cat).forEach(item => {
+                availability[item.id] = val;
+                updateObj[item.id] = val;
+            });
+            saveAvailability(updateObj);
+            renderAdminMenu();
+            showAdminToast(`Updated category: ${cat}`);
+        }
+
+        async function resetTokens() {
+            if (confirm('Reset token counter to 0 and delete all orders?')) {
+                try {
+                    const response = await fetch('/api/orders/reset', { method: 'POST' });
+                    if (response.ok) {
+                        localStorage.setItem('siva_token', '0');
+                        localStorage.removeItem('siva_orders');
+                        showAdminToast('🔄 Tokens and Orders reset on server!');
+                        loadOrders();
+                    }
+                } catch (e) {
+                    console.error('Failed to reset server data:', e);
+                    localStorage.setItem('siva_token', '0');
+                    localStorage.removeItem('siva_orders');
+                    showAdminToast('🔄 Local data reset (offline)');
+                    loadOrders();
+                }
+            }
+        }
+
+        let activeOrderFilter = 'all';
+        let activeHistoryFilter = 'all';
+
+        function setOrderTypeFilter(type) {
+            activeOrderFilter = type;
+            document.querySelectorAll('[id^="order-filter-"]').forEach(btn => btn.classList.remove('active'));
+            const btn = document.getElementById(`order-filter-${type}`);
+            if (btn) btn.classList.add('active');
+            renderFilteredOrders();
+        }
+
+        function setHistoryTypeFilter(type) {
+            activeHistoryFilter = type;
+            document.querySelectorAll('[id^="history-filter-"]').forEach(btn => btn.classList.remove('active'));
+            const btn = document.getElementById(`history-filter-${type}`);
+            if (btn) btn.classList.add('active');
+            renderFilteredHistory();
+        }
+
+        function isDineInOrder(o) {
+            return o.orderType === 'dine_in' || (typeof o.token === 'string' && o.token.toUpperCase().startsWith('D'));
+        }
+
+        function isParcelOrder(o) {
+            return o.orderType === 'parcel' || (typeof o.token === 'string' && o.token.toUpperCase().startsWith('P'));
+        }
+
+        function updateOrderCounts() {
+            const all = currentAdminOrders.length;
+            const dineIn = currentAdminOrders.filter(isDineInOrder).length;
+            const parcel = currentAdminOrders.filter(isParcelOrder).length;
+
+            if (document.getElementById('count-all')) document.getElementById('count-all').textContent = all;
+            if (document.getElementById('count-dine_in')) document.getElementById('count-dine_in').textContent = dineIn;
+            if (document.getElementById('count-parcel')) document.getElementById('count-parcel').textContent = parcel;
+        }
+
+        function renderFilteredOrders() {
+            const el = document.getElementById('adminOrdersList');
+            if (!el) return;
+
+            let filtered = currentAdminOrders;
+            if (activeOrderFilter === 'dine_in') {
+                filtered = currentAdminOrders.filter(isDineInOrder);
+            } else if (activeOrderFilter === 'parcel') {
+                filtered = currentAdminOrders.filter(isParcelOrder);
+            }
+
+            if (filtered.length === 0) {
+                el.innerHTML = '<div class="no-orders" style="text-align:center;color:#888;padding:40px;"><i class="fa fa-inbox" style="font-size:40px;margin-bottom:10px;"></i><p>No orders found for this filter</p></div>';
+            } else {
+                el.innerHTML = renderAdminOrders(filtered);
+            }
+        }
+
+        async function loadOrders() {
+            try {
+                const response = await fetch('/api/orders');
+                if (response.ok) {
+                    const data = await response.json();
+                    currentAdminOrders = data.orders || [];
+                }
+            } catch (e) {
+                console.error('Error loading orders', e);
+                const localOrders = JSON.parse(localStorage.getItem('siva_orders') || '[]');
+                currentAdminOrders = localOrders;
+            }
+            updateOrderCounts();
+            renderFilteredOrders();
+        }
+
+        function updateHistoryCounts() {
+            const all = currentHistoryOrders.length;
+            const dineIn = currentHistoryOrders.filter(isDineInOrder).length;
+            const parcel = currentHistoryOrders.filter(isParcelOrder).length;
+
+            if (document.getElementById('hcount-all')) document.getElementById('hcount-all').textContent = all;
+            if (document.getElementById('hcount-dine_in')) document.getElementById('hcount-dine_in').textContent = dineIn;
+            if (document.getElementById('hcount-parcel')) document.getElementById('hcount-parcel').textContent = parcel;
+        }
+
+        function renderFilteredHistory() {
+            const el = document.getElementById('adminHistoryList');
+            if (!el) return;
+
+            let filtered = currentHistoryOrders;
+            if (activeHistoryFilter === 'dine_in') {
+                filtered = currentHistoryOrders.filter(isDineInOrder);
+            } else if (activeHistoryFilter === 'parcel') {
+                filtered = currentHistoryOrders.filter(isParcelOrder);
+            }
+
+            if (filtered.length === 0) {
+                el.innerHTML = '<div class="no-orders" style="text-align:center;color:#888;padding:40px;"><i class="fa fa-inbox" style="font-size:40px;margin-bottom:10px;"></i><p>No order history found for this filter</p></div>';
+            } else {
+                el.innerHTML = renderAdminOrders(filtered);
+            }
+        }
+
+        let currentHistoryOrders = [];
+        async function loadHistory() {
+            try {
+                const response = await fetch('/api/history');
+                if (response.ok) {
+                    const data = await response.json();
+                    currentHistoryOrders = data.history || [];
+                }
+            } catch (e) {
+                console.error('Error loading history', e);
+                currentHistoryOrders = [];
+            }
+            updateHistoryCounts();
+            renderFilteredHistory();
+        }
+
+        function renderAdminOrders(ordersList) {
+            return ordersList.map(o => {
+                const isPaid      = o.status === 'paid';
+                const isConfirmed = o.status === 'confirmed';
+                const isCancelled = o.status === 'cancelled';
+                const isPending   = o.status === 'pending_payment';
+
+                const isDineIn = isDineInOrder(o);
+
+                const typeBadge = isDineIn
+                    ? `<span class="status-badge" style="background:rgba(59,130,246,0.15);color:#60a5fa;border:1px solid rgba(59,130,246,0.35);font-weight:700;">🍽️ DINE-IN</span>`
+                    : `<span class="status-badge" style="background:rgba(245,158,11,0.15);color:#fbbf24;border:1px solid rgba(245,158,11,0.35);font-weight:700;">🛍️ PARCEL</span>`;
+
+                let statusBadge = `<span class="status-badge received">📋 Received</span>`;
+                if (isPaid) {
+                    statusBadge = `<span class="status-badge confirmed" style="background:rgba(0,176,155,0.15);color:#00b09b;border:1px solid rgba(0,176,155,0.35);">✅ Paid · Razorpay Verified</span>`;
+                } else if (isConfirmed) {
+                    statusBadge = `<span class="status-badge confirmed">✅ Confirmed</span>`;
+                } else if (isCancelled) {
+                    statusBadge = `<span class="status-badge received" style="background: rgba(239,68,68,0.15); color: #ef4444; border: 1px solid rgba(239,68,68,0.3)">❌ Cancelled</span>`;
+                } else if (isPending) {
+                    statusBadge = `<span class="status-badge pending">⏳ Awaiting Confirmation</span>`;
+                }
+
+                let actionsHtml = '';
+                if (!isPaid && !isConfirmed && !isCancelled) {
+                    actionsHtml = `
+                    <div class="admin-order-actions" style="display: flex; gap: 8px; margin-top: 12px;" onclick="event.stopPropagation();">
+                        <button class="confirm-pay-btn" onclick="confirmOrderPayment('${o.token}')" style="margin:0; flex:1;">
+                            ✅ Confirm
+                        </button>
+                        <button class="confirm-pay-btn danger" onclick="cancelOrder('${o.token}')" style="margin:0; flex:1; background: linear-gradient(135deg, #ef4444, #dc2626); box-shadow: 0 4px 12px rgba(239,68,68,0.22);">
+                            ❌ Cancel
+                        </button>
+                    </div>`;
+                }
+
+                const payId = o.payment?.razorpayPaymentId || o.payment?.txnId || '';
+                const tokenFormatted = typeof o.token === 'string' ? o.token : String(o.token).padStart(3, '0');
+
+                return `
+        <div class="order-card animate-fade-in" onclick="openOrderModal('${o.token}')" style="cursor:pointer; ${isCancelled ? 'opacity: 0.65;' : ''}">
+            <div class="order-card-header" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                <span class="order-token-badge">#${tokenFormatted}</span>
+                ${typeBadge}
+                <span class="order-time">🕐 ${o.time}${o.date ? ` | 📅 ${o.date}` : ''}</span>
+                <span class="order-total">₹${o.total}</span>
+            </div>
+            ${statusBadge}
+            <div class="order-items-list">
+                ${o.items.map(i => `<span>${i.name} ×${i.qty}</span>`).join('')}
+                ${o.ghee ? '<span class="ghee-tag">+ Ghee Extra</span>' : ''}
+            </div>
+            ${o.payment ? `
+            <div class="order-pay-info">
+                <span>💳 ${o.payment.app}</span>
+                ${o.payment.upiId ? `<span>${o.payment.upiId}</span>` : ''}
+                <span>📅 ${o.payment.date} ${o.payment.time}</span>
+                ${payId && payId !== '—' ? `<span>📝 ${isPaid ? 'Pay ID' : 'Txn'}: ${payId}</span>` : ''}
+            </div>` : ''}
+            ${actionsHtml}
+        </div>`;
+            }).join('');
+        }
+
+        let adminToastTimer;
+        function showAdminToast(msg) {
+            let t = document.getElementById('adminToast');
+            if (!t) {
+                t = document.createElement('div');
+                t.id = 'adminToast';
+                t.className = 'toast show';
+                document.body.appendChild(t);
+            }
+            t.textContent = msg;
+            t.className = 'toast show';
+            clearTimeout(adminToastTimer);
+            adminToastTimer = setTimeout(() => t.className = 'toast', 2500);
+        }
+
+        async function confirmOrderPayment(token) {
+            try {
+                const response = await fetch(`/api/orders/${token}/confirm`, { method: 'POST' });
+                if (response.ok) {
+                    showAdminToast(`✅ Token #${token} Payment Confirmed!`);
+                    playChime();
+                    loadOrders();
+                } else {
+                    showAdminToast('❌ Failed to confirm. Try again.');
+                }
+            } catch (e) {
+                showAdminToast('❌ Network error.');
+                console.error(e);
+            }
+        }
+
+        async function cancelOrder(token) {
+            if (!confirm(`Are you sure you want to CANCEL order #${token}?`)) return;
+            try {
+                const response = await fetch(`/api/orders/${token}/cancel`, { method: 'POST' });
+                if (response.ok) {
+                    showAdminToast(`❌ Token #${token} Cancelled!`);
+                    loadOrders();
+                } else {
+                    showAdminToast('❌ Failed to cancel. Try again.');
+                }
+            } catch (e) {
+                showAdminToast('❌ Network error.');
+                console.error(e);
+            }
+        }
+
+        async function loadSettingsForm() {
+            const savedId = localStorage.getItem('admin_login_id') || 'admin';
+            const idEl = document.getElementById('settingAdminId');
+            if (idEl) idEl.value = savedId;
+            
+            try {
+                const res = await fetch('/api/settings');
+                if(res.ok) {
+                    const data = await res.json();
+                    if(data.morningTiming) document.getElementById('settingMorningTime').value = data.morningTiming;
+                    if(data.eveningTiming) document.getElementById('settingEveningTime').value = data.eveningTiming;
+                }
+            } catch(e) {
+                console.error('Failed to load settings', e);
+            }
+        }
+
+        async function saveAdminSettings() {
+            const newId = (document.getElementById('settingAdminId').value || '').trim();
+            const currentPass = document.getElementById('settingCurrentPass').value;
+            const newPass = document.getElementById('settingNewPass').value;
+            const confirmPass = document.getElementById('settingConfirmPass').value;
+            
+            const morningTiming = document.getElementById('settingMorningTime').value;
+            const eveningTiming = document.getElementById('settingEveningTime').value;
+
+            // Password handling
+            if (currentPass || newPass || confirmPass) {
+                if (!currentPass) { showAdminToast('❌ Enter current password'); return; }
+                const storedPass = localStorage.getItem('admin_password') || ADMIN_PASSWORD;
+                if (currentPass !== storedPass) { showAdminToast('❌ Current password is wrong'); return; }
+                if (newPass && newPass !== confirmPass) { showAdminToast('❌ New passwords do not match'); return; }
+                if (newPass && newPass.length < 4) { showAdminToast('❌ Password must be at least 4 characters'); return; }
+                if (newPass) localStorage.setItem('admin_password', newPass);
+            }
+
+            if (newId) localStorage.setItem('admin_login_id', newId);
+
+            // Save timings to backend
+            try {
+                await fetch('/api/settings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ morningTiming, eveningTiming })
+                });
+            } catch(e) {
+                console.error(e);
+            }
+
+            document.getElementById('settingCurrentPass').value = '';
+            document.getElementById('settingNewPass').value = '';
+            document.getElementById('settingConfirmPass').value = '';
+            showAdminToast('✅ Settings saved successfully!');
+        }
+
+        // ---- ORDER DETAILS MODAL ----
+        function openOrderModal(tokenNum) {
+            // Check live orders first, then history
+            let order = currentAdminOrders.find(o => String(o.token) === String(tokenNum));
+            if (!order) order = currentHistoryOrders.find(o => String(o.token) === String(tokenNum));
+            if (!order) return;
+
+            let gheeAmt = order.ghee ? order.items.reduce((s, i) => s + i.qty, 0) * 10 : 0;
+            const tokenDisp = typeof order.token === 'string' ? order.token : String(order.token).padStart(3, '0');
+            const isDineIn = isDineInOrder(order);
+
+            let html = `
+        <div class="admin-slip-header">
+            <div class="admin-slip-title">SIVAMANI TIFFINS</div>
+            <div style="font-size:12px; margin-bottom: 8px;">Order Date: ${order.date || ''} | ${order.time || ''}</div>
+            <div style="font-size:14px; font-weight:bold;">TOKEN NUMBER</div>
+            <div class="admin-slip-token">#${tokenDisp}</div>
+            <div style="font-size:13px; font-weight:700; margin-bottom: 6px; color:${isDineIn ? '#3b82f6' : '#f59e0b'};">
+                ${isDineIn ? '🍽️ DINE-IN ORDER' : '🛍️ PARCEL ORDER'}
+            </div>
+            <div style="font-size:14px; font-weight:bold; color: ${order.status === 'confirmed' || order.status === 'paid' ? '#22c55e' : (order.status === 'received' ? '#f59e0b' : '#ff0000')}">
+                STATUS: ${order.status.toUpperCase()}
+            </div>
+        </div>
+        
+        <div style="margin-bottom:12px;">
+            ${order.items.map(i => `
+                <div class="admin-slip-row">
+                    <span>${i.name} ×${i.qty}</span>
+                    <span>₹${i.qty * i.price}</span>
+                </div>
+            `).join('')}
+            ${order.ghee ? `
+                <div class="admin-slip-row">
+                    <span>Ghee Extra</span>
+                    <span>₹${gheeAmt}</span>
+                </div>
+            ` : ''}
+            <div class="admin-slip-row admin-slip-row-bold">
+                <span>TOTAL PAID</span>
+                <span>₹${order.total}</span>
+            </div>
+        </div>
+    `;
+
+            if (order.payment) {
+                html += `
+            <div class="admin-slip-row-bold" style="font-size:14px; margin-top:16px;">💳 PAYMENT DETAILS</div>
+            <div class="admin-slip-row" style="color:#555; font-size:12px;">
+                <span>App Used</span>
+                <span>${order.payment.app}</span>
+            </div>
+            <div class="admin-slip-row" style="color:#555; font-size:12px;">
+                <span>UPI ID</span>
+                <span>${order.payment.upiId}</span>
+            </div>
+            <div class="admin-slip-row" style="color:#555; font-size:12px;">
+                <span>Txn ID</span>
+                <span style="font-size:10px;">${order.payment.txnId || '—'}</span>
+            </div>
+        `;
+            }
+
+            document.getElementById('adminSlipContent').innerHTML = html;
+            document.getElementById('adminOrderModal').style.display = 'flex';
+        }
+
+        function closeOrderModal() {
+            document.getElementById('adminOrderModal').style.display = 'none';
+        }
+
+        // ---- MENU QR MODAL ----
+        function showMenuQr() {
+            // Fetch dynamic IP and port from the backend to automatically setup the public or local network URL
+            fetch('/api/server-info')
+                .then(res => res.json())
+                .then(info => {
+                    let dynamicUrl;
+                    if (info.publicUrl) {
+                        dynamicUrl = `${info.publicUrl}/menu.html`;
+                    } else {
+                        const host = info.localIp === 'localhost' ? window.location.hostname : info.localIp;
+                        const port = info.port || window.location.port || '8080';
+                        dynamicUrl = `http://${host}:${port}/menu.html`;
+                    }
+
+                    const qrContainer = document.getElementById('adminMenuQrContainer');
+                    qrContainer.innerHTML = '';
+                    new QRCode(qrContainer, {
+                        text: dynamicUrl,
+                        width: 250,
+                        height: 250
+                    });
+
+                    // Add or update URL display paragraph in modal
+                    let urlText = document.getElementById('adminMenuUrlText');
+                    if (!urlText) {
+                        urlText = document.createElement('p');
+                        urlText.id = 'adminMenuUrlText';
+                        urlText.style.color = '#ff6b00';
+                        urlText.style.marginTop = '10px';
+                        urlText.style.fontSize = '13px';
+                        urlText.style.wordBreak = 'break-all';
+                        urlText.style.fontWeight = '600';
+                        const container = document.getElementById('adminMenuQrContainer');
+                        container.parentNode.insertBefore(urlText, container.nextSibling);
+                    }
+                    urlText.textContent = dynamicUrl;
+                    document.getElementById('menuQrModal').style.display = 'flex';
+                })
+                .catch(err => {
+                    console.warn("Could not fetch server-info, falling back to window.location.origin", err);
+                    const currentUrl = window.location.origin + '/menu.html';
+                    const qrContainer = document.getElementById('adminMenuQrContainer');
+                    qrContainer.innerHTML = '';
+                    new QRCode(qrContainer, {
+                        text: currentUrl,
+                        width: 250,
+                        height: 250
+                    });
+                    document.getElementById('menuQrModal').style.display = 'flex';
+                });
+        }
+
+        function closeMenuQr() {
+            document.getElementById('menuQrModal').style.display = 'none';
+        }
+
+        // Close modals when clicking outside
+        window.addEventListener('click', (e) => {
+            const orderModal = document.getElementById('adminOrderModal');
+            const qrModal = document.getElementById('menuQrModal');
+            if (e.target === orderModal) closeOrderModal();
+            if (e.target === qrModal) closeMenuQr();
+        });
+    </script>
+</body>
+
+</html>

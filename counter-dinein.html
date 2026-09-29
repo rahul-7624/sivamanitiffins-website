@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dine-In Counter – SHIVAMANI TIFFINS</title>
+    <link rel="stylesheet" href="app.css?v=1.1">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <!-- QZ Tray SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/qz-tray@2.2.2/qz-tray.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bluebird/3.7.2/bluebird.min.js"></script>
+    <style>
+        .admin-toolbar { padding: 16px; display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.05); border-bottom: 1px solid rgba(255,255,255,0.1); }
+        .printer-status { font-size: 14px; font-weight: 500; padding: 6px 12px; border-radius: 20px; background: rgba(255,255,255,0.1); }
+        .printer-status.connected { background: rgba(34, 197, 94, 0.2); color: #4ade80; }
+        .printer-status.error { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
+    </style>
+</head>
+<body class="admin-body">
+    <header class="admin-header">
+        <div class="admin-header-inner">
+            <div>
+                <h1>🍽️ Dine-In Counter</h1>
+                <span>SHIVAMANI TIFFINS</span>
+            </div>
+            <div class="admin-header-actions" style="display: flex; align-items: center; gap: 12px;">
+                <span id="printerStatus" class="printer-status">🖨️ Printer: Connecting...</span>
+                <a href="admin.html" class="admin-btn" style="text-decoration:none; padding: 6px 12px; font-size: 14px;"><i class="fa fa-cog"></i> Admin Panel</a>
+            </div>
+        </div>
+    </header>
+
+    <div class="admin-content" style="display:block">
+        <div class="admin-toolbar">
+            <h3>Live Dine-In Orders</h3>
+            <button onclick="loadOrders()" class="green-btn"><i class="fa fa-sync"></i> Refresh</button>
+        </div>
+        <div id="adminOrdersList" style="padding: 16px; max-width: 800px; margin: 0 auto;"></div>
+    </div>
+
+    <script>
+        // Use bluebird for QZ promises
+        qz.api.setPromiseType(function promise(resolver) { return new Promise(resolver); });
+
+        let currentOrders = [];
+        let qzConnected = false;
+        
+        // --- QZ Tray Setup ---
+        function initPrinter() {
+            qz.websocket.connect().then(() => {
+                qzConnected = true;
+                const ps = document.getElementById('printerStatus');
+                ps.textContent = '🖨️ Printer: Connected';
+                ps.className = 'printer-status connected';
+                console.log('QZ Tray connected');
+            }).catch(e => {
+                console.error(e);
+                const ps = document.getElementById('printerStatus');
+                ps.textContent = '🖨️ Printer: Disconnected (Start QZ Tray)';
+                ps.className = 'printer-status error';
+            });
+        }
+        
+        function printReceipt(order) {
+            if (!qzConnected) {
+                console.warn('Cannot print, QZ Tray not connected');
+                return;
+            }
+            // Create HTML payload for 80mm printer
+            let itemsHtml = order.items.map(i => `
+                <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                    <span style="font-weight: bold; width: 70%;">${i.name} x${i.qty}</span>
+                    <span style="width: 30%; text-align: right;">Rs.${i.qty * i.price}</span>
+                </div>
+            `).join('');
+            
+            if(order.ghee) {
+                const gheeAmt = order.items.reduce((s, i) => s + i.qty, 0) * 30;
+                itemsHtml += `
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                        <span style="font-weight: bold; width: 70%;">Ghee Extra</span>
+                        <span style="width: 30%; text-align: right;">Rs.${gheeAmt}</span>
+                    </div>
+                `;
+            }
+
+            const printData = [
+                {
+                    type: 'pixel',
+                    format: 'html',
+                    flavor: 'plain',
+                    data: `
+                    <html>
+                    <head>
+                        <style>
+                            body { font-family: 'Arial', sans-serif; margin: 0; padding: 0; width: 80mm; font-size: 16px; color: #000; }
+                            .header { text-align: center; margin-bottom: 10px; border-bottom: 2px dashed #000; padding-bottom: 10px; }
+                            .title { font-size: 24px; font-weight: bold; margin: 0; }
+                            .subtitle { font-size: 14px; margin: 5px 0 0 0; }
+                            .token-box { text-align: center; margin: 15px 0; padding: 10px; border: 2px solid #000; }
+                            .token-label { font-size: 18px; margin: 0; }
+                            .token-number { font-size: 48px; font-weight: bold; margin: 0; }
+                            .order-type { font-size: 20px; font-weight: bold; margin: 10px 0; text-align: center; }
+                            .items { margin: 15px 0; border-bottom: 2px dashed #000; padding-bottom: 15px; }
+                            .total-row { display: flex; justify-content: space-between; font-weight: bold; font-size: 20px; margin-top: 10px; }
+                            .footer { text-align: center; margin-top: 15px; font-size: 14px; }
+                        </style>
+                    </head>
+                    <body>
+                        <div class="header">
+                            <p class="title">SHIVAMANI TIFFINS</p>
+                            <p class="subtitle">S.R Nagar</p>
+                            <p class="subtitle">Date: ${order.date || ''} Time: ${order.time || ''}</p>
+                        </div>
+                        <div class="token-box">
+                            <p class="token-label">TOKEN NUMBER</p>
+                            <p class="token-number">${order.token}</p>
+                        </div>
+                        <div class="order-type">
+                            🍽️ DINE IN
+                        </div>
+                        <div class="items">
+                            ${itemsHtml}
+                        </div>
+                        <div class="total-row">
+                            <span>TOTAL PAID</span>
+                            <span>Rs.${order.total}</span>
+                        </div>
+                        <div class="footer">
+                            <p>Paid via ${order.payment ? order.payment.app : 'Online'}</p>
+                            <p>Thank You!</p>
+                        </div>
+                    </body>
+                    </html>
+                    `
+                }
+            ];
+
+            qz.printers.getDefault().then(printer => {
+                const config = qz.configs.create(printer, { margins: 0, units: 'mm', rasterize: false });
+                return qz.print(config, printData);
+            }).then(() => {
+                console.log('Printed successfully');
+            }).catch(e => {
+                console.error('Print failed', e);
+            });
+        }
+
+        // --- SSE & Data ---
+        function initSSE() {
+            const source = new EventSource('/api/orders/live');
+            source.onmessage = function (event) {
+                const data = JSON.parse(event.data);
+                if (data.type === 'new_order') {
+                    if (data.order.orderType === 'dine_in') {
+                        printReceipt(data.order);
+                        loadOrders();
+                        
+                        try {
+                            const audio = new (window.AudioContext || window.webkitAudioContext)();
+                            const osc = audio.createOscillator();
+                            osc.connect(audio.destination);
+                            osc.frequency.value = 659.25; // E5
+                            osc.start();
+                            osc.stop(audio.currentTime + 0.3);
+                        } catch(e){}
+                    }
+                } else if (data.type === 'reset' || data.type === 'payment_confirmed' || data.type === 'order_cancelled') {
+                    loadOrders();
+                }
+            };
+        }
+
+        async function loadOrders() {
+            try {
+                const response = await fetch('/api/orders');
+                if (response.ok) {
+                    const data = await response.json();
+                    currentOrders = data.filter(o => o.orderType === 'dine_in');
+                    renderOrders();
+                }
+            } catch (e) { console.error('Error loading orders', e); }
+        }
+
+        function renderOrders() {
+            const el = document.getElementById('adminOrdersList');
+            if (currentOrders.length === 0) {
+                el.innerHTML = '<div style="text-align:center;color:#888;padding:40px;"><i class="fa fa-inbox" style="font-size:40px;margin-bottom:10px;"></i><p>No dine-in orders yet</p></div>';
+                return;
+            }
+            
+            el.innerHTML = currentOrders.map(o => {
+                const isPaid = o.status === 'paid' || o.status === 'confirmed';
+                const isCancelled = o.status === 'cancelled';
+                let statusBadge = isPaid ? '<span class="status-badge confirmed">✅ Paid</span>' : (isCancelled ? '<span class="status-badge received">❌ Cancelled</span>' : '');
+
+                return `
+                <div class="order-card animate-fade-in" style="${isCancelled ? 'opacity: 0.65;' : ''} margin-bottom: 16px;">
+                    <div class="order-card-header">
+                        <span class="order-token-badge" style="background:#f59e0b;">#${o.token}</span>
+                        <span class="order-time">🕐 ${o.time}</span>
+                        <span class="order-total">₹${o.total}</span>
+                    </div>
+                    ${statusBadge}
+                    <div class="order-items-list" style="margin-top: 8px;">
+                        ${o.items.map(i => `<span>${i.name} ×${i.qty}</span>`).join('')}
+                        ${o.ghee ? '<span class="ghee-tag">+ Ghee Extra</span>' : ''}
+                    </div>
+                    <div style="margin-top: 12px; display: flex; gap: 8px;">
+                        <button onclick='printReceipt(${JSON.stringify(o).replace(/'/g, "\\'")})' class="admin-btn" style="flex: 1; padding: 8px; font-size: 14px;"><i class="fa fa-print"></i> Print Receipt</button>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initPrinter();
+            initSSE();
+            loadOrders();
+        });
+    </script>
+</body>
+</html>
